@@ -70,6 +70,10 @@ exports.createUser = async (req, res) => {
         });
 
         newUser = await user.save();
+        if(!newUser) {
+            console.error('Failed to create new user in DB');
+            return res.status(500).json({ success: false, message: 'Failed to create user' });
+        }
         console.log('New user successfully created in DB:', newUser.email);
     } catch (error) {
         console.error('Database Error:', error.message);
