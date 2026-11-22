@@ -1,3 +1,9 @@
+const { OAuth2Client } = require('google-auth-library');
+
+const googleClient = new OAuth2Client(
+    process.env.GOOGLE_CLIENT_ID
+);
+
 const User = require('./userModel'); // Importing the updated User model
 const jwt = require('jsonwebtoken');
 const Booking = require('./bookingModel');
@@ -53,7 +59,7 @@ exports.loginUser = async (req, res) => {
     }
 }
 
-// Create a new user with manual registration details
+
 // Create a new user with manual registration details
 exports.createUser = async (req, res) => {
     const { name, email, phoneNumber, password } = req.body;
@@ -112,17 +118,36 @@ exports.createUser = async (req, res) => {
 };
 
 
-// Handle Google Login / Sign up
+
 // Handle Google Login / Sign up
 exports.googleAuth = async (req, res) => {
 
-    const { token } = req.body;
-
     try {
 
-        const payload = jwt.decode(token);
+        const { credential } = req.body;
 
-        const { email, name } = payload;
+        if (!credential) {
+            return res.status(400).json({
+                success: false,
+                message: "Google credential is missing."
+            });
+        }
+
+        const ticket = await googleClient.verifyIdToken({
+            idToken: credential,
+            audience: process.env.GOOGLE_CLIENT_ID
+        });
+
+        const payload = ticket.getPayload();
+
+        const { email, name, email_verified } = payload;
+
+        if (!email || !email_verified) {
+            return res.status(401).json({
+                success: false,
+                message: "Google email verification failed."
+            });
+        }
 
         let user = await User.findOne({ email });
 
@@ -134,21 +159,32 @@ exports.googleAuth = async (req, res) => {
             });
 
             await user.save();
+
         }
 
-        res.status(200).json({
+        return res.status(200).json({
             success: true,
-            message: 'Google Auth Success',
-            user
+            message: "Google Login Successful",
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email
+            }
         });
 
-    } catch (error) {
-
-        res.status(500).json({
-            success: false,
-            message: 'Error decoding Google Token'
-        });
     }
+
+    catch (error) {
+
+        console.error("Google Authentication Error:", error);
+
+        return res.status(401).json({
+            success: false,
+            message: "Google authentication failed."
+        });
+
+    }
+
 };
 
 
