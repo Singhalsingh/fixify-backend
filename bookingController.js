@@ -4,7 +4,7 @@ const Booking = require("./bookingModel");
 const transporter = require("./config/mailer");
 
 // =====================================
-// CREATE BOOKING (FAST & NON-BLOCKING)
+// CREATE BOOKING (FAST, SECURE & NON-BLOCKING)
 // =====================================
 
 exports.createBooking = async (req, res) => {
@@ -21,6 +21,7 @@ exports.createBooking = async (req, res) => {
             notes
         } = req.body;
 
+        // 1. Validate required fields
         if (
             !name ||
             !email ||
@@ -36,7 +37,23 @@ exports.createBooking = async (req, res) => {
             });
         }
 
-        // Customer ID comes from verified JWT
+        // 2. STRICT PAST DATE SECURITY VALIDATION (Backend Level)
+        // Aaj ki local date (YYYY-MM-DD format) nikalte hain user ki timezone ke mutabik
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const todayString = `${year}-${month}-${day}`; // Format: YYYY-MM-DD
+
+        // Agar select ki gayi date aaj ke din se pehle ki hai
+        if (date < todayString) {
+            return res.status(400).json({
+                success: false,
+                message: "You cannot book a service for a past date! Please select today or a future date."
+            });
+        }
+
+        // 3. Customer ID comes from verified JWT
         const newBooking = new Booking({
             userId: req.user.id,
             name,
@@ -48,19 +65,17 @@ exports.createBooking = async (req, res) => {
             notes: notes || ""
         });
 
-        // 1. Database entry saves instantly
+        // 4. Database entry saves instantly
         const savedBooking = await newBooking.save();
 
-        // 2. IMMEDIATE HTTP RESPONSE SEND KAREIN (Non-Blocking Flow)
-        // Hum response turant bhej rahe hain taaki frontend par late update na ho
+        // 5. IMMEDIATE HTTP RESPONSE SEND KAREIN (Instant Action Response)
         res.status(201).json({
             success: true,
             message: "Booking created successfully",
             booking: savedBooking
         });
 
-        // 3. BACKGROUND EMAIL SENDING (No await - running in the background!)
-        // Iske background mein chalne se response block nahi hoga
+        // 6. BACKGROUND EMAIL SENDING (Non-Blocking - running in background without await!)
         transporter.sendMail({
             from: `"Fixify Team" <${process.env.EMAIL_USER}>`,
             to: email,
