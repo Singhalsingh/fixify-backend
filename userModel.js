@@ -5,31 +5,50 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+
     email: {
         type: String,
         required: true,
-        unique: true
+        unique: true,
+        lowercase: true,
+        trim: true
     },
-    password: { // Added password field back
+
+    password: {
         type: String,
-        required: false // Optional for Google Auth users
+        required: false
     },
+
     phoneNumber: {
         type: String,
-        required: false 
+        required: false
     },
+
     address: {
         type: String,
-        required: false 
+        required: false
     },
+
     bookingDetails: {
         type: String,
-        required: false 
+        required: false
     },
+
     userHistory: {
-        type: [String], 
+        type: [String],
         default: []
+    },
+
+    resetPasswordToken: {
+        type: String,
+        default: null
+    },
+
+    resetPasswordExpires: {
+        type: Date,
+        default: null
     }
+
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

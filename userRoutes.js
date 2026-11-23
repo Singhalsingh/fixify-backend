@@ -1,18 +1,43 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const userController = require('./userController'); // Path updated to look in the current directory
 
-// Route to get all users
-router.get('/', userController.getAllUsers);
+const userController = require("./userController");
+const authMiddleware = require("./authMiddleware");
 
-// Route to create a new user (manual registration)
-router.post('/create', userController.createUser); // Updated URL path
+// Get all users
+router.get("/", userController.getAllUsers);
 
-router.post('/login', userController.loginUser);
+// Manual Registration
+router.post("/create", userController.createUser);
 
-// Route for Google authentication
-router.post('/auth/google', userController.googleAuth); // Added Google Auth route
-router.post('/booking', userController.createBooking);
+// Login
+router.post("/login", userController.loginUser);
+
+// Google Login
+router.post("/auth/google", userController.googleAuth);
+
+// Update Profile (Protected Route)
+// Dono routes rakhne se frontend se PUT aaye ya PATCH, dono handle ho jayenge!
+router.put("/profile", authMiddleware, userController.updateProfile);
+router.patch("/profile", authMiddleware, userController.updateProfile);
+
+
+// Forgot Password
+router.post(
+    "/forgot-password",
+    userController.forgotPassword
+);
+
+// Reset Password
+router.post(
+    "/reset-password/:token",
+    userController.resetPassword
+);
+
+// Booking
+router.post("/booking", userController.createBooking);
+
+// Enquiry
 router.post("/enquiry", userController.createEnquiry);
 
 module.exports = router;

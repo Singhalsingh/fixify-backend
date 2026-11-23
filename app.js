@@ -179,7 +179,7 @@ if (!process.env.MONGODB_URI) {
         });
 
 }
-
+app.use("/api/users", userRoutes);
 
 // ==================================
 // TEST ROUTE

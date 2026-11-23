@@ -1,15 +1,26 @@
-const express = require('express');
+const express = require("express");
+
 const router = express.Router();
 
-const bookingController = require('./bookingController');
+const bookingController = require("./bookingController");
 
-console.log('bookingRoutes.js loaded');
+// Authentication middleware
+const authMiddleware = require("./authMiddleware");
 
-router.post('/create-booking', (req, res, next) => {
-    console.log('Create booking route matched');
-    next();
-}, bookingController.createBooking);
+console.log("bookingRoutes.js loaded");
 
-router.get('/', bookingController.getAllBookings);
+// CREATE BOOKING
+router.post(
+    "/create-booking",
+    authMiddleware,
+    bookingController.createBooking
+);
+
+// CUSTOMER BOOKINGS
+router.get(
+    "/my-bookings",
+    authMiddleware,
+    bookingController.getMyBookings
+);
 
 module.exports = router;
