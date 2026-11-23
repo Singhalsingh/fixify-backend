@@ -272,42 +272,26 @@ exports.googleAuth = async (req, res) => {
 // UPDATE USER PROFILE
 // ======================================
 
+// =====================================
+// UPDATE PROFILE CONTROLLER
+// =====================================
 exports.updateProfile = async (req, res) => {
     try {
         const { name, email, phoneNumber } = req.body;
+        const userId = req.user.id; // From verified JWT
 
-        if (!name || !email || !phoneNumber) {
-            return res.status(400).json({
-                success: false,
-                message: "Name, email and contact number are required"
-            });
-        }
+        // Update fields matching Mongo DB Schema
+        const updateData = { name, phoneNumber };
 
-        const normalizedEmail = email.trim().toLowerCase();
-
-        const existingUser = await User.findOne({
-            email: normalizedEmail,
-            _id: { $ne: req.user.id }
-        });
-
-        if (existingUser) {
-            return res.status(409).json({
-                success: false,
-                message: "This email is already registered"
-            });
+        // Agar user ne email bhi bheja hai toh use update data mein shamil karein
+        if (email) {
+            updateData.email = email;
         }
 
         const updatedUser = await User.findByIdAndUpdate(
-            req.user.id,
-            {
-                name: name.trim(),
-                email: normalizedEmail,
-                phoneNumber: phoneNumber.trim()
-            },
-            {
-                new: true,
-                runValidators: true
-            }
+            userId,
+            updateData,
+            { new: true, runValidators: true }
         );
 
         if (!updatedUser) {
@@ -317,18 +301,23 @@ exports.updateProfile = async (req, res) => {
             });
         }
 
+        // Return updated safe user details
         return res.status(200).json({
             success: true,
             message: "Profile updated successfully",
-            user: safeUser(updatedUser)
+            user: {
+                id: updatedUser._id,
+                name: updatedUser.name,
+                email: updatedUser.email,
+                phoneNumber: updatedUser.phoneNumber
+            }
         });
 
     } catch (error) {
         console.error("Profile Update Error:", error);
-
         return res.status(500).json({
             success: false,
-            message: "Profile update failed"
+            message: "Unable to update profile details"
         });
     }
 };
