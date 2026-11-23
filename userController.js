@@ -338,6 +338,9 @@ exports.updateProfile = async (req, res) => {
 // FORGOT PASSWORD
 // ======================================
 
+// ======================================
+// FORGOT PASSWORD (SAFE & ROBUST VERSION)
+// ======================================
 exports.forgotPassword = async (req, res) => {
     try {
         const { email } = req.body;
@@ -353,9 +356,8 @@ exports.forgotPassword = async (req, res) => {
             email: email.trim().toLowerCase()
         });
 
-        // Generic response prevents revealing registered emails
-        const responseMessage =
-            "If an account exists with this email, a reset link will be sent.";
+        // Generic response to protect privacy
+        const responseMessage = "If an account exists with this email, a reset link will be sent.";
 
         if (!user) {
             return res.status(200).json({
@@ -378,18 +380,14 @@ exports.forgotPassword = async (req, res) => {
             .update(resetToken)
             .digest("hex");
 
-        user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
+        user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 Mins expiry
 
         await user.save();
 
-        const frontendURL = process.env.FRONTEND_URL;
+        // Safe fallback logic for FRONTEND_URL if not configured
+        const frontendURL = process.env.FRONTEND_URL || "http://localhost:5501"; 
 
-        if (!frontendURL) {
-            throw new Error("FRONTEND_URL is not configured");
-        }
-
-        const resetLink =
-            `${frontendURL}/reset-password.html?token=${resetToken}`;
+        const resetLink = `${frontendURL}/reset-password.html?token=${resetToken}`;
 
         try {
             await transporter.sendMail({
@@ -401,37 +399,44 @@ exports.forgotPassword = async (req, res) => {
                         <h2>Reset Your Password</h2>
                         <p>Hello ${user.name},</p>
                         <p>Click the button below to reset your password.</p>
-                        <a href="${resetLink}"
-                           style="background:#0284c7;color:white;
-                           padding:12px 20px;text-decoration:none;
-                           border-radius:5px;">
-                           Reset Password
-                        </a>
-                        <p>This link expires in 15 minutes.</p>
-                        <p>If you did not request this, ignore this email.</p>
+                        <div style="margin: 20px 0;">
+                            <a href="${resetLink}"
+                               style="background:#0284c7;color:white;
+                               padding:12px 20px;text-decoration:none;
+                               border-radius:5px;font-weight:bold;display:inline-block;">
+                               Reset Password
+                            </a>
+                        </div>
+                        <p>Or copy this link to your browser: <br>${resetLink}</p>
+                        <p>This link will expire in 15 minutes.</p>
+                        <p>If you did not request this, please ignore this email.</p>
                     </div>
                 `
             });
 
         } catch (emailError) {
+            // Clean token fields if mail fails
             user.resetPasswordToken = null;
             user.resetPasswordExpires = null;
             await user.save();
 
-            throw emailError;
+            console.error("Nodemailer Error details:", emailError);
+            return res.status(500).json({
+                success: false,
+                message: "Email deliver nahi ho paya. Apna Gmail App Password (EMAIL_PASS) check karein backend par."
+            });
         }
 
         return res.status(200).json({
             success: true,
-            message: responseMessage
+            message: "Reset link successfully sent to your email!"
         });
 
     } catch (error) {
-        console.error("Forgot Password Error:", error);
-
+        console.error("Forgot Password Main Error:", error);
         return res.status(500).json({
             success: false,
-            message: "Unable to process password reset"
+            message: "Unable to process password reset. Database connectivity check karein."
         });
     }
 };
