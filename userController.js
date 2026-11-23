@@ -275,15 +275,23 @@ exports.googleAuth = async (req, res) => {
 // =====================================
 // UPDATE PROFILE CONTROLLER
 // =====================================
+// =====================================
+// UPDATE PROFILE CONTROLLER (BULLETPROOF FIX)
+// =====================================
 exports.updateProfile = async (req, res) => {
     try {
-        const { name, email, phoneNumber } = req.body;
+        const { name, email, phoneNumber, phone } = req.body;
         const userId = req.user.id; // From verified JWT
 
-        // Update fields matching Mongo DB Schema
-        const updateData = { name, phoneNumber };
+        // Dono keys (phone & phoneNumber) ko value assign karein taaki schema kisi ko bhi reject na kare
+        const finalPhone = phoneNumber || phone;
 
-        // Agar user ne email bhi bheja hai toh use update data mein shamil karein
+        const updateData = { 
+            name, 
+            phoneNumber: finalPhone,
+            phone: finalPhone 
+        };
+
         if (email) {
             updateData.email = email;
         }
@@ -301,7 +309,7 @@ exports.updateProfile = async (req, res) => {
             });
         }
 
-        // Return updated safe user details
+        // Return safe user details
         return res.status(200).json({
             success: true,
             message: "Profile updated successfully",
@@ -309,7 +317,8 @@ exports.updateProfile = async (req, res) => {
                 id: updatedUser._id,
                 name: updatedUser.name,
                 email: updatedUser.email,
-                phoneNumber: updatedUser.phoneNumber
+                phoneNumber: updatedUser.phoneNumber || updatedUser.phone,
+                phone: updatedUser.phoneNumber || updatedUser.phone
             }
         });
 
@@ -321,6 +330,7 @@ exports.updateProfile = async (req, res) => {
         });
     }
 };
+
 
 
 // ======================================
